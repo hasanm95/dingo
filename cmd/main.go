@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"net"
+
+	"github.com/hasanm95/dingo/internal/dns"
 )
 
 func main() {
@@ -32,11 +34,27 @@ func main() {
 			break
 		}
 
+        defaultHeader := dns.DNSHeader{
+            ID:      1234,
+            QR:      1,
+            OpCode:  dns.StandardQuery,
+            AA:      0,
+            TC:      0,
+            RD:      0,
+            RA:      0,
+            Z:       0,
+            RCode:   dns.NoError,
+            QDCount: 0,
+            ANCount: 0,
+            NSCount: 0,
+            ARCount: 0,
+        }
+
         receivedData := buf[:size]
 		fmt.Printf("Received %d bytes from %s\n", receivedData, source)
 
 
-		response := []byte("dummy response")
+		response := defaultHeader.Write()
 
         _, err = conn.WriteToUDP(response, source)
 		if err != nil {
