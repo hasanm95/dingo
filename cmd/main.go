@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
 	"net"
 
@@ -28,33 +29,44 @@ func main() {
     buf := make([]byte, 512)
 
     for {
-        size, source, err := conn.ReadFromUDP(buf)
+        _, source, err := conn.ReadFromUDP(buf)
         if err != nil {
 			fmt.Println("Error receiving data:", err)
 			break
 		}
 
-        defaultHeader := dns.DNSHeader{
-            ID:      1234,
-            QR:      1,
-            OpCode:  dns.StandardQuery,
-            AA:      0,
-            TC:      0,
-            RD:      0,
-            RA:      0,
-            Z:       0,
-            RCode:   dns.NoError,
-            QDCount: 0,
-            ANCount: 0,
-            NSCount: 0,
-            ARCount: 0,
-        }
+        receivedID := binary.BigEndian.Uint16(buf[0:2])
+        
+        header := dns.DNSHeader{
+			ID:      receivedID,
+			QR:      1,
+			OpCode:  dns.StandardQuery,
+			AA:      0,
+			TC:      0,
+			RD:      0,
+			RA:      0,
+			Z:       0,
+			RCode:   dns.NoError,
+			QDCount: 1,
+			ANCount: 1,
+			NSCount: 0,
+			ARCount: 0,
+		}
 
-        receivedData := buf[:size]
-		fmt.Printf("Received %d bytes from %s\n", receivedData, source)
+		// Question
+		questions := []dns.DNSQuestion{
+			{Name: "codecrafters.io", Type: dns.A, Class: dns.IN},
+		}
 
+		// Answer
+		answers := []dns.DNSAnswer{
+			{Name: "codecrafters.io", Type: dns.A, Class: dns.IN, TTL: 60, Data: "8.8.8.8"},
+		}
 
-		response := defaultHeader.Write()
+		// All together
+		response := header.Write()
+		response = append(response, dns.WriteQuestions(questions)...)
+		response = append(response, dns.WriteAnswers(answers)...)
 
         _, err = conn.WriteToUDP(response, source)
 		if err != nil {
